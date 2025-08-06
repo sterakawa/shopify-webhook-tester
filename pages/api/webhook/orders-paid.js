@@ -9,7 +9,7 @@ export const config = {
 function verifyHmac(hmac, rawBody, secret) {
   const digest = crypto
     .createHmac('sha256', secret)
-    .update(rawBody, 'utf8')
+    .update(rawBody) // Bufferそのまま
     .digest('base64');
   return digest === hmac;
 }
@@ -19,27 +19,24 @@ export default async function handler(req, res) {
     return res.status(405).send('Method Not Allowed');
   }
 
-  const rawBody = await new Promise((resolve) => {
-    let data = '';
-    req.on('data', (chunk) => (data += chunk));
-    req.on('end', () => resolve(data));
-  });
+  // Bufferでraw body取得
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  const rawBody = Buffer.concat(chunks);
 
-  const hmacHeader = req.headers['x-shopify-hmac-sha256'];
+  // HMACヘッダー取得（大文字小文字対応）
+  const hmacHeader = req.headers['x-shopify-hmac-sha256'] || req.headers['X-Shopify-Hmac-Sha256'];
   const verified = verifyHmac(hmacHeader, rawBody, process.env.SHOPIFY_API_SECRET);
 
   if (!verified) {
+    console.error("HMAC verification failed");
     return res.status(401).send('Unauthorized');
   }
 
-  const order = JSON.parse(rawBody);
-  const email = order.email;
-  const orderId = order.id;
-
-  const token = crypto.randomBytes(8).toString('hex');
-  const uniqueUrl = `https://your-domain.com/ticket/${orderId}-${token}`;
-
-  console.log(`Send URL to ${email}: ${uniqueUrl}`);
+  const order = JSON.parse(rawBody.toString('utf8'));
+  console.log("Webhook received:", order);
 
   return res.status(200).send('OK');
 }
