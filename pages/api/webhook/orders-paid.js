@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
   const rawBody = Buffer.concat(chunks);
 
-  // ---- HMAC検証スキップ（テスト用） ----
+  // ---- HMAC検証スキップ（テスト用） -----
   console.warn("HMAC verification skipped (test mode)");
 
   // Webhookペイロード処理
