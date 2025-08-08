@@ -12,6 +12,9 @@ function verifyHmac(hmac, rawBody, secret) {
     .update(rawBody)
     .digest('base64');
 
+  console.log('Received HMAC:', hmac);
+  console.log('Generated HMAC:', digest);
+
   return digest === hmac;
 }
 
@@ -26,21 +29,20 @@ export default async function handler(req, res) {
   }
   const rawBody = Buffer.concat(chunks);
 
-  const hmacHeader =
-    req.headers['x-shopify-hmac-sha256'] || req.headers['X-Shopify-Hmac-Sha256'];
-
+  const hmacHeader = req.headers['x-shopify-hmac-sha256'];
   const verified = verifyHmac(hmacHeader, rawBody, process.env.SHOPIFY_API_SECRET);
 
   if (!verified) {
-    console.error("HMAC verification failed");
+    console.error("❌ HMAC verification failed");
     return res.status(401).send('Unauthorized');
   }
 
   const order = JSON.parse(rawBody.toString('utf8'));
-
   const token = crypto.randomBytes(8).toString('hex');
   const uniqueUrl = `https://your-domain.com/ticket/${order.id}-${token}`;
-  console.log(`Generated unique URL: ${uniqueUrl}`);
+
+  console.log("✅ HMAC verified");
+  console.log(`Generated URL: ${uniqueUrl}`);
 
   return res.status(200).send('OK');
 }
