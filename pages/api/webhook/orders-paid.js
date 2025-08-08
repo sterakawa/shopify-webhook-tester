@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     console.log(`    バリアントID: ${item.variant_id}`);
   });
 
-  // ✅ ユニークURL生成
+  // ✅ ユニークURL生成をする
   const token = crypto.randomBytes(8).toString('hex');
   const uniqueUrl = `https://your-domain.com/ticket/${order.id}-${token}`;
   console.log(`🔗 ユニークURL: ${uniqueUrl}`);
