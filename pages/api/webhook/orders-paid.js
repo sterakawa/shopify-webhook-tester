@@ -7,15 +7,15 @@ export const config = {
 };
 
 function verifyHmac(hmac, rawBody, secret) {
-  const digest = crypto
+  const generated = crypto
     .createHmac('sha256', secret)
-    .update(rawBody)
+    .update(rawBody) // ✅ Bufferのまま渡す
     .digest('base64');
 
   console.log('Received HMAC:', hmac);
-  console.log('Generated HMAC:', digest);
+  console.log('Generated HMAC:', generated);
 
-  return digest === hmac;
+  return generated === hmac;
 }
 
 export default async function handler(req, res) {
@@ -27,9 +27,9 @@ export default async function handler(req, res) {
   for await (const chunk of req) {
     chunks.push(chunk);
   }
-  const rawBody = Buffer.concat(chunks);
+  const rawBody = Buffer.concat(chunks); // ✅ Buffer形式
 
-  const hmacHeader = req.headers['x-shopify-hmac-sha256'];
+  const hmacHeader = req.headers['x-shopify-hmac-sha256']; // ✅ 小文字
   const verified = verifyHmac(hmacHeader, rawBody, process.env.SHOPIFY_API_SECRET);
 
   if (!verified) {
