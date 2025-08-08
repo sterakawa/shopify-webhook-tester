@@ -7,18 +7,17 @@ export const config = {
 };
 
 function verifyHmac(hmac, rawBody, secret) {
-  const digest = crypto
+  const generatedHash = crypto
     .createHmac('sha256', secret)
     .update(rawBody)
     .digest();
 
-  const received = Buffer.from(hmac, 'base64');
+  const receivedHash = Buffer.from(hmac, 'base64');
 
-  if (received.length !== digest.length) {
-    return false;
-  }
+  // 長さが違う場合は false（重要）
+  if (receivedHash.length !== generatedHash.length) return false;
 
-  return crypto.timingSafeEqual(digest, received);
+  return crypto.timingSafeEqual(generatedHash, receivedHash);
 }
 
 export default async function handler(req, res) {
@@ -34,8 +33,10 @@ export default async function handler(req, res) {
 
   const hmacHeader = req.headers['x-shopify-hmac-sha256'];
 
-  if (!verifyHmac(hmacHeader, rawBody, process.env.SHOPIFY_API_SECRET)) {
-    console.error("HMAC verification failed");
+  const isVerified = verifyHmac(hmacHeader, rawBody, process.env.SHOPIFY_API_SECRET);
+
+  if (!isVerified) {
+    console.error('❌ HMAC verification failed');
     return res.status(401).send('Unauthorized');
   }
 
@@ -43,7 +44,7 @@ export default async function handler(req, res) {
 
   const token = crypto.randomBytes(8).toString('hex');
   const uniqueUrl = `https://your-domain.com/ticket/${order.id}-${token}`;
-  console.log(`Generated unique URL: ${uniqueUrl}`);
+  console.log(`✅ Webhook received. Unique URL: ${uniqueUrl}`);
 
   return res.status(200).send('OK');
 }
