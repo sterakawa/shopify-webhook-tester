@@ -1,22 +1,7 @@
-import crypto from 'crypto';
-
 const VERSION = '2025-04';
 
-// base64url（= URLに安全な文字列）
-function b64url(buf) {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
-// 署名（期限なし：oid.li.n.sku でHMAC）
-function sign({ oid, li, n, sku }) {
-  const secret = process.env.SERVICE_SIGNING_SECRET; // FzxEUzgHAxY4vfqJsHViEUN8 をVercelに設定
-  const payload = `${oid}.${li}.${n}.${sku || ''}`;
-  return b64url(crypto.createHmac('sha256', secret).update(payload).digest());
-}
-
-// SKU → AR起動URL マッピング
+// SKU → AR起動URL マッピング（必要に応じて追記）
 const AR_BASE_MAP = {
-  // ログで見えたSKUと、例で挙げたSKUの両方をケア
   'ARM001': 'https://c.spixd.com/8pebgge2l0',
   'ARMoo1': 'https://c.spixd.com/8pebgge2l0',
 };
@@ -52,14 +37,14 @@ export default async function handler(req, res) {
       return res.status(202).send('order not paid yet');
     }
 
+    // SKUごとにAR URLを作成（今回は固定URLにフォールバック）
     const links = [];
     for (const li of order.line_items || []) {
       const sku = (li.sku || '').trim();
       const base = AR_BASE_MAP[sku] || AR_DEFAULT_BASE;
       const qty = Math.max(1, Number(li.quantity || 1));
       for (let i = 1; i <= qty; i++) {
-        const sig = sign({ oid: order.id, li: li.id, n: i, sku });
-        const arUrl = `${base}?oid=${order.id}&li=${li.id}&n=${i}&sku=${encodeURIComponent(sku)}&sig=${sig}`;
+        const arUrl = base; // ← 署名やトークンは付けず、そのまま起動
         links.push({ title: li.title || sku || 'item', url: arUrl });
       }
     }
